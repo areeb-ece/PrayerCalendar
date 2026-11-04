@@ -160,7 +160,7 @@ input[type="date"].sd-input { font-family: var(--font-mono); }
 
 .daylist { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: var(--sp-1) var(--sp-5); }
 .daylist li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: baseline; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--row-line); }
-.daylist .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--hc); align-self: center; }
+.daylist .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--hc); align-self: start; margin-top: .3em; }
 .daylist li.mk .sw { background: repeating-linear-gradient(135deg, var(--hc) 0 2px, transparent 2px 4px); outline: 1px solid var(--hc); outline-offset: -1px; }
 .daylist .t { font: var(--fs-2) var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
 .daylist .n { color: var(--ink); overflow-wrap: anywhere; }

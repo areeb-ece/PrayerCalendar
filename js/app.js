@@ -344,7 +344,7 @@ function drawDay() {
     const mk = C.EVENT[e.key].kind === "makrooh";
     s += `<g class="k-${e.key}"><rect class="bar-ev${mk ? " mk" : ""}" x="${a.toFixed(1)}" y="${y}" width="${Math.max(1.5, b - a).toFixed(1)}" height="${LH}" rx="3"/>`;
     const lbl = e.title;
-    if (b - a > lbl.length * 6.6 + 12) s += `<text class="lbl" x="${(a + 6).toFixed(1)}" y="${y + LH / 2 + 4}">${esc(lbl)}</text>`;
+    if (b - a > lbl.length * 6.2 + 10) s += `<text class="lbl" x="${(a + 6).toFixed(1)}" y="${y + LH / 2 + 4}">${esc(lbl)}</text>`;
     s += "</g>";
   }
   const now = Date.now();

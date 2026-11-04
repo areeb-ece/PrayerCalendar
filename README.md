@@ -1,6 +1,6 @@
 # Prayer Calendar
 
-**Live: [areeb-ece.github.io/prayercalendar](https://areeb-ece.github.io/prayercalendar/)** · made by areeb
+**Live: [areeb-ece.github.io/PrayerCalendar](https://areeb-ece.github.io/PrayerCalendar/)** · made by areeb
 
 Prayer times for your location as a calendar file (.ics) for Google, Apple or Outlook
 Calendar. Each prayer is an event lasting its whole window, and the makrooh times and the

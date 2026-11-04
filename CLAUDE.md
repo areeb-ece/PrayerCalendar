@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Prayer Calendar, a static page served at https://areeb-ece.github.io/prayercalendar/ by
+Prayer Calendar, a static page served at https://areeb-ece.github.io/PrayerCalendar/ by
 GitHub Pages (deploy from `main`, root). No build step, no dependencies: ES modules in
 `js/`, tested with `node --test` and a Playwright check (see README.md).
 
