@@ -1,0 +1,6 @@
+node_modules/
+test-results/
+.DS_Store
+*.log
+# exported calendars hold your location; keep them out of the repo
+*.ics
