@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- Every time is worked out in this tab. connect-src 'none' means the page can't send your
+     location (or anything else) over the network, even by mistake. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; manifest-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Prayer Calendar</title>
+<meta name="description" content="Prayer times for your location as a calendar file (.ics) for Google, Apple or Outlook Calendar: each prayer's window, the makrooh times and the gaps between, with your choice of method, angles and Asr. Runs entirely in your browser.">
+<meta name="author" content="areeb">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<!-- Shared with areeb-ece.github.io and its other tools (areeb-ece.github.io/design/): the
+     master palette, its scales and components, the settings panel and the night sky, and
+     the visitor's saved settings (one localStorage entry for every site). When /design/
+     doesn't load, js/theme.js links the copy in assets/design/ instead. -->
+<link rel="stylesheet" href="/design/tokens.css">
+<link rel="stylesheet" href="/design/ui.css">
+<link rel="stylesheet" href="/design/fonts.css">
+<script src="/design/theme.js"></script>
+<script src="js/theme.js"></script>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="sd-bar bar">
+    <div class="brand">
+      <h1 class="sd-wordmark">PRAYER<span>/</span>CALENDAR</h1>
+      <a class="by" href="https://areeb-ece.github.io/" rel="noopener noreferrer">by areeb</a>
+    </div>
+    <span class="sd-grow"></span>
+    <span class="lock" title="This page cannot make network requests. Your location stays in this browser."><i aria-hidden="true"></i>Nothing leaves this tab</span>
+    <button class="sd-btn sd-primary" id="btnDownload" type="button" disabled>Download .ics</button>
+    <span class="design-slot" data-design-settings></span>
+    <button class="sd-btn theme" id="btnTheme" type="button" title="Switch between the dark and light sheet" hidden>Light</button>
+  </header>
+
+  <div class="main">
+    <main class="stage" id="stage" data-sky>
+      <div class="sheet sd-pin1" id="sheet" hidden>
+        <header class="tb">
+          <h2 id="tbPlace"></h2>
+          <p class="tbsub" id="tbSub"></p>
+        </header>
+
+        <section class="day" aria-labelledby="dayLabel">
+          <div class="dayhead">
+            <button class="sd-btn sd-icon sd-small" type="button" id="dPrev" aria-label="Previous day" title="Previous day  [←]"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
+            <h3 id="dayLabel" aria-live="polite"></h3>
+            <button class="sd-btn sd-icon sd-small" type="button" id="dNext" aria-label="Next day" title="Next day  [→]"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5"/></svg></button>
+          </div>
+          <div class="timeline" id="timeline"></div>
+          <ol class="daylist" id="dayList" aria-label="This day's events"></ol>
+        </section>
+
+        <div class="viewbar">
+          <div class="sd-seg" id="viewSeg" role="radiogroup" aria-label="Show">
+            <button type="button" role="radio" data-view="table" aria-checked="true">Timetable</button>
+            <button type="button" role="radio" data-view="ics" aria-checked="false">.ics file</button>
+          </div>
+          <span class="spacer"></span>
+          <button class="sd-btn sd-small" type="button" id="btnCopy" hidden>Copy text</button>
+        </div>
+        <div class="tablewrap" id="viewTable">
+          <table class="sd-table times" id="times"></table>
+          <p class="sd-hint" id="tableKey" hidden></p>
+        </div>
+        <pre class="icstext" id="viewIcs" hidden></pre>
+      </div>
+
+      <div class="empty" id="empty">
+        <div class="empty-in sd-pin1">
+          <h2>Where are you praying?</h2>
+          <p>Choose a place and the dates, and every prayer's window, the makrooh times and the gaps between them show here day by day, exactly as the calendar file will have them.</p>
+          <div class="row">
+            <button class="sd-btn sd-primary" type="button" data-action="locate">Use my location</button>
+            <button class="sd-btn" type="button" data-action="city">Pick a city</button>
+          </div>
+          <p class="sd-hint">Your location is used only in this tab, to work out the times.</p>
+        </div>
+      </div>
+    </main>
+
+    <aside class="side" id="side" aria-label="Calendar settings">
+      <section class="panel attn" id="pNotes" aria-labelledby="hNotes" hidden>
+        <h2 id="hNotes">Needs a look</h2>
+        <ul class="notes" id="notes"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="hPlace">
+        <h2 id="hPlace">Place</h2>
+        <div class="sd-field">
+          <label class="sd-label" for="city">City</label>
+          <div class="locrow">
+            <input class="sd-input sd-small" id="city" list="cityList" autocomplete="off" spellcheck="false" placeholder="Start typing a city" aria-describedby="placeErr">
+            <button class="sd-btn" type="button" id="btnLocate" title="Ask the browser where you are">Use my location</button>
+          </div>
+          <datalist id="cityList"></datalist>
+          <p class="sd-error" id="placeErr" aria-live="polite"></p>
+        </div>
+        <details class="disc" id="coordDisc">
+          <summary>Coordinates and time zone</summary>
+          <div class="disc-body">
+            <p class="sd-hint">For a place not in the list, or to be exact: paste coordinates from a map (e.g. <code>43.9455, -78.8968</code>) into Latitude.</p>
+            <div class="two">
+              <label class="sd-field"><span class="sd-label">Latitude</span><input class="sd-input sd-small sd-mono" id="lat" inputmode="decimal" autocomplete="off" placeholder="43.90"></label>
+              <label class="sd-field"><span class="sd-label">Longitude</span><input class="sd-input sd-small sd-mono" id="lon" inputmode="decimal" autocomplete="off" placeholder="-78.86"></label>
+            </div>
+            <label class="sd-field"><span class="sd-label">Time zone</span><span class="sd-select sd-small"><select id="tz" aria-describedby="tzErr"></select></span></label>
+            <p class="sd-error" id="tzErr" aria-live="polite"></p>
+            <label class="sd-field"><span class="sd-label">Elevation <span class="sd-hint">(metres, optional)</span></span><input class="sd-input sd-small sd-mono" id="elev" type="number" min="0" max="9000" step="1" inputmode="numeric"></label>
+            <p class="sd-hint">Height above the surroundings brings sunrise earlier and sunset later. Leave it at 0 to match most published timetables.</p>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel" aria-labelledby="hDates">
+        <h2 id="hDates">Dates</h2>
+        <div class="presets" id="presets" role="group" aria-label="Quick ranges">
+          <button class="sd-btn sd-small" type="button" data-preset="30">Next 30 days</button>
+          <button class="sd-btn sd-small" type="button" data-preset="90">Next 3 months</button>
+          <button class="sd-btn sd-small" type="button" data-preset="year">Rest of this year</button>
+          <button class="sd-btn sd-small" type="button" data-preset="12">12 months</button>
+          <button class="sd-btn sd-small" type="button" data-preset="ramadan" id="presetRamadan">Ramadan</button>
+        </div>
+        <div class="two">
+          <label class="sd-field"><span class="sd-label">First day</span><input class="sd-input sd-small" type="date" id="dStart" aria-describedby="rangeErr"></label>
+          <label class="sd-field"><span class="sd-label">Last day</span><input class="sd-input sd-small" type="date" id="dEnd" aria-describedby="rangeErr"></label>
+        </div>
+        <p class="sd-error" id="rangeErr" aria-live="polite"></p>
+        <p class="sd-hint">Up to a year in one file. The Ramadan dates follow the Umm al-Qura calendar; where the month starts by local moonsighting it can differ by a day.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="hCalc">
+        <h2 id="hCalc">Calculation</h2>
+        <label class="sd-field"><span class="sd-label">Method</span><span class="sd-select sd-small"><select id="method"></select></span></label>
+        <p class="sd-hint">Pick the one your mosque uses. Changing an angle below makes it Custom.</p>
+        <div class="two">
+          <label class="sd-field"><span class="sd-label">Fajr angle</span><span class="unit"><input class="sd-input sd-small sd-mono" id="fajrAngle" type="number" min="1" max="30" step="0.1" aria-describedby="fajrErr"><i>°</i></span></label>
+          <div class="sd-field">
+            <span class="sd-label" id="ishaL">Isha</span>
+            <div class="sd-seg wide" id="ishaMode" role="radiogroup" aria-labelledby="ishaL">
+              <button type="button" role="radio" data-v="angle">Angle</button>
+              <button type="button" role="radio" data-v="minutes">Minutes</button>
+            </div>
+          </div>
+        </div>
+        <p class="sd-error" id="fajrErr" aria-live="polite"></p>
+        <div class="two">
+          <label class="sd-field" id="ishaAngleF"><span class="sd-label">Isha angle</span><span class="unit"><input class="sd-input sd-small sd-mono" id="ishaAngle" type="number" min="1" max="30" step="0.1"><i>°</i></span></label>
+          <label class="sd-field" id="ishaMinF"><span class="sd-label">Isha after Maghrib</span><span class="unit"><input class="sd-input sd-small sd-mono" id="ishaMinutes" type="number" min="0" max="300" step="1"><i>min</i></span></label>
+          <label class="sd-field" id="ishaRamF"><span class="sd-label">In Ramadan</span><span class="unit"><input class="sd-input sd-small sd-mono" id="ishaRamadan" type="number" min="0" max="300" step="1" placeholder="same"><i>min</i></span></label>
+        </div>
+        <p class="sd-error" id="ishaErr" aria-live="polite"></p>
+        <div class="sd-field">
+          <span class="sd-label" id="maghribL">Maghrib</span>
+          <div class="sd-seg wide" id="maghribMode" role="radiogroup" aria-labelledby="maghribL">
+            <button type="button" role="radio" data-v="sunset">At sunset</button>
+            <button type="button" role="radio" data-v="minutes">After sunset</button>
+            <button type="button" role="radio" data-v="angle">Angle</button>
+          </div>
+        </div>
+        <label class="sd-field" id="maghribMinF"><span class="sd-label">Minutes after sunset</span><span class="unit"><input class="sd-input sd-small sd-mono" id="maghribMinutes" type="number" min="0" max="60" step="1"><i>min</i></span></label>
+        <label class="sd-field" id="maghribAngleF"><span class="sd-label">Maghrib angle</span><span class="unit"><input class="sd-input sd-small sd-mono" id="maghribAngle" type="number" min="0" max="20" step="0.1"><i>°</i></span></label>
+        <p class="sd-error" id="maghribErr" aria-live="polite"></p>
+
+        <div class="sd-field">
+          <span class="sd-label" id="asrL">Asr begins</span>
+          <div class="sd-seg wide" id="asr" role="radiogroup" aria-labelledby="asrL">
+            <button type="button" role="radio" data-v="shafii">Mithl</button>
+            <button type="button" role="radio" data-v="hanafi">Mithlain</button>
+            <button type="button" role="radio" data-v="both">Both</button>
+          </div>
+          <p class="sd-hint" id="asrHint"></p>
+        </div>
+        <div class="bothopts" id="bothOpts">
+          <div class="sd-field">
+            <span class="sd-label" id="dhuhrEndL">Dhuhr ends at</span>
+            <div class="sd-seg wide" id="dhuhrEnd" role="radiogroup" aria-labelledby="dhuhrEndL">
+              <button type="button" role="radio" data-v="mithl">Mithl</button>
+              <button type="button" role="radio" data-v="mithlain">Mithlain</button>
+            </div>
+          </div>
+          <label class="sd-check"><input type="checkbox" id="asrSplit"><span>End Asr (Mithl) where Asr (Mithlain) begins, so the two don't overlap</span></label>
+        </div>
+
+        <label class="sd-field"><span class="sd-label">Dhuhr after zawal</span><span class="unit"><input class="sd-input sd-small sd-mono" id="dhuhrMinutes" type="number" min="0" max="30" step="1"><i>min</i></span></label>
+        <p class="sd-hint">Zawal is true noon, when the sun crosses the meridian. Some timetables wait a few minutes after it.</p>
+
+        <details class="disc">
+          <summary>Night and high latitudes</summary>
+          <div class="disc-body">
+            <div class="sd-field">
+              <span class="sd-label" id="nightL">The night runs from sunset to</span>
+              <div class="sd-seg wide" id="night" role="radiogroup" aria-labelledby="nightL">
+                <button type="button" role="radio" data-v="fajr">Fajr</button>
+                <button type="button" role="radio" data-v="sunrise">Sunrise</button>
+              </div>
+              <p class="sd-hint">Used for midnight (the end of Isha, if you choose it) and the last third of the night.</p>
+            </div>
+            <label class="sd-field"><span class="sd-label">When twilight doesn't end</span><span class="sd-select sd-small"><select id="highLat">
+              <option value="angle">Twilight angle (angle ÷ 60 of the night)</option>
+              <option value="seventh">One-seventh of the night</option>
+              <option value="middle">Middle of the night</option>
+              <option value="none">Leave Fajr and Isha out</option>
+            </select></span></label>
+            <p class="sd-hint">Far from the equator in summer the sky may never get dark enough for the Fajr or Isha angle. These rules place them within the night instead; days that use one are marked in the timetable.</p>
+          </div>
+        </details>
+        <details class="disc">
+          <summary>Adjust by minutes</summary>
+          <div class="disc-body">
+            <p class="sd-hint">Move a time to match your mosque's timetable. Negative is earlier.</p>
+            <div class="adjust" id="adjust"></div>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel" aria-labelledby="hMk">
+        <h2 id="hMk">Makrooh times and gaps</h2>
+        <label class="sd-field"><span class="sd-label">Sunrise: from sunrise for</span><span class="unit"><input class="sd-input sd-small sd-mono" id="mkSunrise" type="number" min="0" max="60" step="1"><i>min</i></span></label>
+        <div class="sd-field">
+          <span class="sd-label" id="mkZawalL">Istiwa (before zawal)</span>
+          <div class="sd-seg wide" id="mkZawalMode" role="radiogroup" aria-labelledby="mkZawalL">
+            <button type="button" role="radio" data-v="minutes">Minutes before</button>
+            <button type="button" role="radio" data-v="dahwa">From Dahwa Kubra</button>
+          </div>
+          <p class="sd-hint" id="mkZawalHint"></p>
+        </div>
+        <label class="sd-field" id="mkZawalF"><span class="sd-label">Minutes before zawal</span><span class="unit"><input class="sd-input sd-small sd-mono" id="mkZawal" type="number" min="0" max="60" step="1"><i>min</i></span></label>
+        <label class="sd-field"><span class="sd-label">Sunset: before sunset for</span><span class="unit"><input class="sd-input sd-small sd-mono" id="mkSunset" type="number" min="0" max="60" step="1"><i>min</i></span></label>
+        <div class="sd-field">
+          <span class="sd-label" id="asrEndL">Asr ends at</span>
+          <div class="sd-seg wide" id="asrEnd" role="radiogroup" aria-labelledby="asrEndL">
+            <button type="button" role="radio" data-v="sunset">Sunset</button>
+            <button type="button" role="radio" data-v="makrooh">The sunset makrooh time</button>
+          </div>
+        </div>
+        <label class="sd-field"><span class="sd-label">Isha ends at</span><span class="sd-select sd-small"><select id="ishaEnd">
+          <option value="midnight">Midnight (half the night)</option>
+          <option value="third">The last third of the night</option>
+          <option value="fajr">Fajr</option>
+        </select></span></label>
+        <p class="sd-hint">The time between Fajr and Dhuhr has no obligatory prayer. As an event it starts after the sunrise makrooh time and stops at istiwa, when those are in the file.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="hEv">
+        <h2 id="hEv">Events in the file</h2>
+        <p class="sd-hint">Switch on what you want, rename it, and add a reminder.</p>
+        <div class="evlist" id="evList"></div>
+        <label class="sd-check"><input type="checkbox" id="jumuah"><span>Call Dhuhr “Jumu'ah” on Fridays</span></label>
+      </section>
+
+      <section class="panel" aria-labelledby="hFile">
+        <h2 id="hFile">Calendar file</h2>
+        <label class="sd-field"><span class="sd-label">Calendar name</span><input class="sd-input sd-small" id="calName" autocomplete="off"></label>
+        <div class="sd-field">
+          <span class="sd-label" id="lengthL">Prayer events last</span>
+          <div class="sd-seg wide" id="length" role="radiogroup" aria-labelledby="lengthL">
+            <button type="button" role="radio" data-v="window">The whole window</button>
+            <button type="button" role="radio" data-v="start">A set time</button>
+          </div>
+        </div>
+        <label class="sd-field" id="startMinF"><span class="sd-label">Event length</span><span class="unit"><input class="sd-input sd-small sd-mono" id="startMinutes" type="number" min="1" max="240" step="1"><i>min</i></span></label>
+        <div class="sd-field">
+          <span class="sd-label" id="roundL">Rounding to the minute</span>
+          <div class="sd-seg wide" id="rounding" role="radiogroup" aria-labelledby="roundL">
+            <button type="button" role="radio" data-v="nearest">Nearest</button>
+            <button type="button" role="radio" data-v="safe">Cautious</button>
+          </div>
+          <p class="sd-hint">Cautious starts prayers on the next minute and ends them on the one before; makrooh times grow the other way.</p>
+        </div>
+        <label class="sd-check"><input type="checkbox" id="busy"><span>Show events as busy</span></label>
+        <label class="sd-check"><input type="checkbox" id="withLocation"><span>Put the place name in each event</span></label>
+        <label class="sd-check"><input type="checkbox" id="withTimes"><span>List the day's times in each event's notes</span></label>
+      </section>
+
+      <section class="panel" aria-labelledby="hView">
+        <h2 id="hView">This page</h2>
+        <div class="sd-field">
+          <span class="sd-label" id="clockL">Clock</span>
+          <div class="sd-seg" id="clock" role="radiogroup" aria-labelledby="clockL">
+            <button type="button" role="radio" data-v="12">12-hour</button>
+            <button type="button" role="radio" data-v="24">24-hour</button>
+          </div>
+        </div>
+        <label class="sd-check" id="hijriF"><input type="checkbox" id="hijri"><span>Hijri dates in the timetable</span></label>
+        <div class="row">
+          <button class="sd-btn sd-ghost sd-small" type="button" id="btnReset">Reset to defaults</button>
+          <button class="sd-link" type="button" id="btnPrivacy">How it stays private</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <details class="disc">
+          <summary>Add the file to your calendar</summary>
+          <div class="disc-body">
+            <ol class="steps">
+              <li><b>Google:</b> on a computer, open <a href="https://calendar.google.com/calendar/r/settings/export" target="_blank" rel="noopener noreferrer">Settings → Import &amp; export</a>, choose the .ics and pick a calendar. A new one, such as “Prayer times”, is easiest to remove or recolour later.</li>
+              <li><b>Apple:</b> open the .ics; Calendar asks which calendar to add it to.</li>
+              <li><b>Outlook:</b> Calendar → Add calendar → Upload from file.</li>
+            </ol>
+            <p class="sd-hint">The file is a snapshot. To change it, delete that calendar and import a new file. A file for the same place and days replaces matching events in calendars that support it.</p>
+          </div>
+        </details>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<dialog class="sd-dialog" id="privacyDlg" aria-labelledby="privacyTitle">
+  <header><h2 id="privacyTitle">How your location stays private</h2><button class="sd-x" type="button" data-close aria-label="Close">×</button></header>
+  <div class="sd-body prose">
+    <p><b>No server.</b> This is a static page. The times and the .ics are worked out by JavaScript in this tab.</p>
+    <p><b>No network.</b> The page's security policy (<code>connect-src 'none'</code>) stops it from sending anything over the network, even by mistake. The city list is part of the page, so picking a city looks nothing up.</p>
+    <p><b>Your location.</b> “Use my location” asks your browser, which asks you first. The coordinates stay in this tab.</p>
+    <p><b>What's kept.</b> Your settings, place included, are saved in this browser so they're there next time. “Reset to defaults” clears them. The display settings (theme, background) are shared with the other sites on areeb-ece.github.io.</p>
+    <p class="sd-hint">The source is on <a href="https://github.com/areeb-ece/PrayerCalendar" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+  </div>
+  <footer><button class="sd-btn sd-primary" type="button" data-close>Got it</button></footer>
+</dialog>
+
+<div class="sd-toast" id="toast" role="status" hidden></div>
+<noscript><p class="noscript">Prayer Calendar works out the times in your browser, so it needs JavaScript.</p></noscript>
+
+<script src="/design/ui.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
