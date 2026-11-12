@@ -31,7 +31,10 @@
     </div>
     <span class="sd-grow"></span>
     <span class="lock" title="This page cannot make network requests. Your location stays in this browser."><i aria-hidden="true"></i>Nothing leaves this tab</span>
-    <button class="sd-btn sd-primary" id="btnDownload" type="button" disabled>Download .ics</button>
+    <div class="actions" role="group" aria-label="Save">
+      <button class="sd-btn sd-primary" id="btnDownload" type="button" disabled>Download .ics</button>
+      <button class="sd-btn" id="btnPdf" type="button" disabled aria-haspopup="dialog" title="Save the timetable as a PDF to print or share">Save PDF</button>
+    </div>
     <span class="design-slot" data-design-settings></span>
     <button class="sd-btn theme" id="btnTheme" type="button" title="Switch between the dark and light sheet" hidden>Light</button>
   </header>
@@ -309,10 +312,31 @@
   </div>
 </div>
 
+<dialog class="sd-dialog" id="pdfDlg" aria-labelledby="pdfTitle">
+  <header><h2 id="pdfTitle">Save the timetable as a PDF</h2><button class="sd-x" type="button" data-close aria-label="Close">×</button></header>
+  <div class="sd-body pdfopts">
+    <p class="sd-hint">The same days and times as the timetable, set for printing: black on white, with the place and how the times were worked out at the top of each page.</p>
+    <div class="sd-field">
+      <span class="sd-label" id="pdfPaperL">Paper</span>
+      <div class="sd-seg" id="pdfPaper" role="radiogroup" aria-labelledby="pdfPaperL">
+        <button type="button" role="radio" data-v="letter">Letter</button>
+        <button type="button" role="radio" data-v="a4">A4</button>
+      </div>
+    </div>
+    <label class="sd-check"><input type="checkbox" id="pdfMonthPages"><span>Start each month on a new page</span></label>
+    <fieldset class="sd-fieldset">
+      <legend>Columns</legend>
+      <p class="sd-hint">Fajr, sunrise, Dhuhr, Asr, Maghrib and Isha are always there, with Asr as set under Calculation. Add:</p>
+      <div class="pdfcols" id="pdfCols"></div>
+    </fieldset>
+  </div>
+  <footer><button class="sd-btn sd-ghost" type="button" data-close>Cancel</button><button class="sd-btn sd-primary" type="button" id="pdfGo">Download PDF</button></footer>
+</dialog>
+
 <dialog class="sd-dialog" id="privacyDlg" aria-labelledby="privacyTitle">
   <header><h2 id="privacyTitle">How your location stays private</h2><button class="sd-x" type="button" data-close aria-label="Close">×</button></header>
   <div class="sd-body prose">
-    <p><b>No server.</b> This is a static page. The times and the .ics are worked out by JavaScript in this tab.</p>
+    <p><b>No server.</b> This is a static page. The times, the .ics and the PDF are worked out by JavaScript in this tab.</p>
     <p><b>No network.</b> The page's security policy (<code>connect-src 'none'</code>) stops it from sending anything over the network, even by mistake. The city list is part of the page, so picking a city looks nothing up.</p>
     <p><b>Your location.</b> “Use my location” asks your browser, which asks you first. The coordinates stay in this tab.</p>
     <p><b>What's kept.</b> Your settings, place included, are saved in this browser so they're there next time. “Reset to defaults” clears them. The display settings (theme, background) are shared with the other sites on areeb-ece.github.io.</p>

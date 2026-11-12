@@ -99,6 +99,8 @@ export function defaultSettings() {
     calName: "Prayer times",
     clock: "12",
     hijri: false,
+    // the PDF timetable: paper, a page per month, a Hijri column and optional extra times
+    pdf: { paper: "letter", monthPages: true, hijri: false, extras: { ishraq: false, istiwa: false, zawal: false, mkSet: false, midnight: false, third: false } },
     events,
   };
 }
@@ -193,6 +195,7 @@ export function hijri(s) {
   const g = (t) => +(p.find((x) => x.type === t) || {}).value;
   return { day: g("day"), month: g("month"), year: parseInt((p.find((x) => x.type === "relatedYear" || x.type === "year") || {}).value, 10) };
 }
+export const HIJRI_SHORT = ["Muh.", "Saf.", "Rab. I", "Rab. II", "Jum. I", "Jum. II", "Raj.", "Sha.", "Ram.", "Shaw.", "Dhu Q.", "Dhu H."];
 export const HIJRI_MONTHS = ["Muharram", "Safar", "Rabi al-Awwal", "Rabi al-Thani", "Jumada al-Ula", "Jumada al-Akhirah", "Rajab", "Shaban", "Ramadan", "Shawwal", "Dhu al-Qadah", "Dhu al-Hijjah"];
 
 // The first and last day of the next Ramadan from a date (today's, if it's Ramadan now).
@@ -357,8 +360,12 @@ export function windows(s) {
 
     const mkRise = t.sunrise + s.mkSunrise * MIN;
     const mkZawal = s.mkZawalMode === "dahwa" ? (t.fajr + t.sunset) / 2 : t.zawal - s.mkZawal * MIN;
+    // kept on the day for the timetable's optional columns
+    t.ishraq = mkRise;
+    t.istiwa = mkZawal;
     const zawalEnd = Math.max(t.zawal, t.dhuhr);
     const mkSet = t.sunset - s.mkSunset * MIN;
+    t.mkSet = mkSet;
     const on = (k) => s.events[k] && s.events[k].on;
 
     put("fajr", t.fajr, t.sunrise);
@@ -484,4 +491,52 @@ export function problems(s) {
 }
 function validZone(tz) {
   try { new Intl.DateTimeFormat("en", { timeZone: tz }); return true; } catch (e) { return false; }
+}
+
+// ── the timetable ────────────────────────────────────────────────────────────
+// Optional columns beyond the prayers, for the timetable and the PDF. how: which way
+// cautious rounding moves the time (a prayer starts on the next minute, a makrooh time
+// starts on the minute before, and so on).
+export const EXTRA_COLUMNS = [
+  { key: "ishraq", label: "Ishraq", hint: "the sunrise makrooh time ends", how: "ceil" },
+  { key: "istiwa", label: "Istiwa", hint: "the istiwa makrooh time begins", how: "floor" },
+  { key: "zawal", label: "Zawal", hint: "true noon", how: "round" },
+  { key: "mkSet", label: "Sunset mk.", hint: "the sunset makrooh time begins", how: "floor" },
+  { key: "midnight", label: "Midnight", hint: "halfway through the night", how: "floor" },
+  { key: "third", label: "Last third", hint: "the last third of the night begins", how: "ceil" },
+];
+const DAY_ORDER = ["fajr", "sunrise", "ishraq", "istiwa", "zawal", "dhuhr", "asr1", "asr2", "mkSet", "maghrib", "isha", "midnight", "third"];
+
+// The timetable's columns in the order of the day: the prayers and sunrise, Asr once
+// or twice, and any of EXTRA_COLUMNS switched on in `extras` ({ key: true }).
+export function tableColumns(s, extras = {}) {
+  const asr = s.asr === "both"
+    ? [{ key: "asr1", label: "Asr (Mithl)", how: "ceil" }, { key: "asr2", label: "Asr (Mithlain)", how: "ceil" }]
+    : [{ key: s.asr === "hanafi" ? "asr2" : "asr1", label: "Asr", how: "ceil" }];
+  const cols = [{ key: "fajr", label: "Fajr", how: "ceil" }, { key: "sunrise", label: "Sunrise", how: "floor" }, { key: "dhuhr", label: "Dhuhr", how: "ceil" },
+    ...asr, { key: "maghrib", label: "Maghrib", how: "ceil" }, { key: "isha", label: "Isha", how: "ceil" },
+    ...EXTRA_COLUMNS.filter((x) => extras[x.key]).map(({ key, label, how }) => ({ key, label, how }))];
+  return cols.sort((x, y) => DAY_ORDER.indexOf(x.key) - DAY_ORDER.indexOf(y.key));
+}
+
+// A column's time on a day (UTC ms), rounded to the minute the way the file rounds it.
+export function columnTime(t, col, s) {
+  const v = t[col.key];
+  if (v === undefined || isNaN(v)) return NaN;
+  return Math[s.rounding === "safe" ? col.how : "round"](v / MIN) * MIN;
+}
+// Whether a cell's time came from the high-latitude rule.
+export const fromRule = (t, col) => (col.key === "fajr" && t.adjusted.fajr) || (col.key === "isha" && t.adjusted.isha);
+
+// One line saying how the times were worked out, for a printed timetable.
+export function methodSummary(s) {
+  const m = METHODS[s.method];
+  const deg = (v) => `${+v.toFixed(2)}°`;
+  const parts = [m ? m.label : "Custom"];
+  const isha = s.ishaMode === "minutes" ? `Isha ${s.ishaMinutes} min after Maghrib${s.ishaRamadan ? ` (${s.ishaRamadan} in Ramadan)` : ""}` : `Isha ${deg(s.ishaAngle)}`;
+  parts.push(`Fajr ${deg(s.fajrAngle)}, ${isha}`);
+  if (s.maghribMode === "angle") parts.push(`Maghrib ${deg(s.maghribAngle)}`);
+  else if (s.maghribMode === "minutes" && s.maghribMinutes) parts.push(`Maghrib ${s.maghribMinutes} min after sunset`);
+  parts.push({ shafii: "Asr: Mithl", hanafi: "Asr: Mithlain", both: "Asr: Mithl and Mithlain" }[s.asr]);
+  return parts.join(" · ");
 }

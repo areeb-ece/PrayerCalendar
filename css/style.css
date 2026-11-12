@@ -78,6 +78,7 @@ p { margin: 0; }
 .lock { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-1); color: var(--ink-3); white-space: nowrap; }
 .lock i { flex: none; width: var(--sp-2); height: var(--sp-2); border-radius: var(--r-pill); background: var(--ok); }
 .design-slot { display: contents; }
+.actions { display: flex; align-items: center; gap: var(--sp-2); }
 
 /* ── main split: settings on the left, the sheet on the sky ── */
 .main { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); }
@@ -183,6 +184,12 @@ input[type="date"].sd-input { font-family: var(--font-mono); }
 .empty-in { max-width: 520px; padding: var(--sp-6); border-radius: var(--r-lg); background: var(--sheet); display: grid; gap: var(--sp-4); }
 .empty-in h2 { font: var(--fw-head) var(--fs-6)/var(--lh-head) var(--font-text); letter-spacing: var(--tr-head); }
 .empty-in p { color: var(--ink-2); line-height: 1.55; }
+
+/* the PDF dialog */
+.pdfopts { display: grid; gap: var(--sp-4); }
+.pdfcols { display: grid; gap: var(--sp-1); }
+.pdfopts .sd-field > .sd-seg { justify-self: start; }
+.pdfcols .sd-hint { display: inline; }
 
 .prose p { margin: 0 0 var(--sp-3); line-height: 1.55; color: var(--ink-2); }
 .prose b { color: var(--ink); }
