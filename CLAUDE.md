@@ -4,8 +4,9 @@ Prayer Calendar, a static page served at https://areeb-ece.github.io/PrayerCalen
 GitHub Pages (deploy from `main`, root). No build step, no dependencies: ES modules in
 `js/`, tested with `node --test` and a Playwright check (see README.md).
 
-- `js/core.js` holds everything that isn't the DOM (astronomy, windows, .ics) so the
-  unit tests run it in Node. Keep it that way.
+- `js/core.js` holds everything that isn't the DOM (astronomy, windows, timetable
+  columns, .ics) and `js/pdf.js` the PDF, so the unit tests run them in Node. Keep it that
+  way. The on-screen timetable and the PDF share `tableColumns`/`columnTime`.
 - The shared design (themes, `sd-` components, settings panel, night sky) comes from
   `/design/` on the portfolio (areeb-ece/areeb-ece.github.io, `public/design/`).
   `assets/design/` is a copy for offline use; refresh it when the master changes. Colours,

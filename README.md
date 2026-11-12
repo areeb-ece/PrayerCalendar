@@ -3,8 +3,8 @@
 **Live: [areeb-ece.github.io/PrayerCalendar](https://areeb-ece.github.io/PrayerCalendar/)** · made by areeb
 
 Prayer times for your location as a calendar file (.ics) for Google, Apple or Outlook
-Calendar. Each prayer is an event lasting its whole window, and the makrooh times and the
-gap between Fajr and Dhuhr can go in too. You choose the method, the angles, how Asr is
+Calendar, or as a printable timetable (PDF). Each prayer is an event lasting its whole
+window, and the makrooh times and the gap between Fajr and Dhuhr can go in too. You choose the method, the angles, how Asr is
 reckoned and what goes in the file, and preview every day before you download it.
 
 It's a static page with no build step, no framework and no server. Everything is worked
@@ -44,6 +44,12 @@ out in your browser tab; the page can't make network requests.
   minutes; nearest or cautious rounding; free or busy; the place name and the day's
   times in each event's notes if you want them.
 
+- **The timetable as a PDF:** the same days and times, black on white for printing, on
+  Letter or A4, a page per month or months running on. Each page carries the place and
+  how the times were worked out; Fridays are shaded and high-latitude days marked. Add a
+  Hijri date column (with the Hijri months in each month's heading) and any of Ishraq,
+  Istiwa, Zawal, the sunset makrooh time, midnight and the last third of the night.
+
 Settings are saved in your browser. The look (theme, accent, corners, motion, night sky)
 comes from the gear menu shared with [areeb-ece.github.io](https://areeb-ece.github.io/)
 and its other tools.
@@ -75,12 +81,13 @@ DESIGN_DIR=../areeb-ece.github.io/public/design npm run test:browser   # with th
 ```
 index.html          the page
 css/style.css       its layout (colours and components come from /design/)
-js/core.js          the sun, the prayer times, the windows and the .ics file (no DOM)
+js/core.js          the sun, the prayer times, the windows, the timetable's columns and the .ics file (no DOM)
+js/pdf.js           the timetable as a PDF: a small PDF writer and the page layout (no DOM)
 js/cities.js        the city list
 js/app.js           the page's controls, timeline and timetable
 js/theme.js         offline fallback for the shared design
 assets/design/      copy of the portfolio's tokens.css and ui.css, for offline use
-tests/              core.test.js (node --test), browser-check.js (Playwright)
+tests/              core.test.js and pdf.test.js (node --test), browser-check.js (Playwright)
 ```
 
 ## Privacy
@@ -93,6 +100,8 @@ tests/              core.test.js (node --test), browser-check.js (Playwright)
 
 ## Credits
 
+- The PDF uses the reader's built-in Helvetica, so no font is embedded; its widths are
+  Helvetica's published metrics.
 - [mononoki](https://github.com/madmalik/mononoki) by Matthias Tellen, SIL Open Font
   License (`assets/fonts/OFL-mononoki.txt`)
 - The calculation methods' angles are as their organisations publish them, in the form

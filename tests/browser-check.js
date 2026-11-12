@@ -127,6 +127,21 @@ try {
     assert.ok(ics.startsWith("BEGIN:VCALENDAR\r\n") && ics.includes("SUMMARY:Asr (Mithlain)") && ics.includes("TRIGGER:-PT10M"));
     assert.ok(ics.split("BEGIN:VEVENT").length - 1 > 365 * 10, "a year of events");
 
+    // the timetable as a PDF: paper, a page per month, extra columns
+    await page.click("#btnPdf");
+    assert.ok(await page.isVisible("#pdfDlg"), "PDF dialog opens");
+    await page.click('#pdfPaper [data-v="a4"]');
+    await page.check('[data-pdf-col="midnight"]');
+    await page.check('[data-pdf-col="hijri"]');
+    await page.screenshot({ path: path.join(SHOTS, `${tag}-desktop-pdf-dialog.png`) });
+    const [pdfDl] = await Promise.all([page.waitForEvent("download"), page.click("#pdfGo")]);
+    const pdf = fs.readFileSync(await pdfDl.path()).toString("latin1");
+    assert.match(pdfDl.suggestedFilename(), /^prayer-times-oshawa-canada-.*\.pdf$/);
+    assert.ok(pdf.startsWith("%PDF-1.4") && pdf.includes("(Oshawa, Canada) Tj") && pdf.includes("(Midnight) Tj") && pdf.includes("(Hijri) Tj"));
+    assert.ok(pdf.includes("/MediaBox [0 0 595.28 841.89]"), "A4");
+    assert.ok(+/\/Count (\d+)/.exec(pdf)[1] >= 12, "a page a month for 12 months");
+    await page.waitForSelector("#pdfDlg", { state: "hidden", timeout: 2000 }); // it closes after saving (with a short fade)
+
     await page.click('#viewSeg [data-view="ics"]');
     assert.ok((await page.textContent("#viewIcs")).includes("X-WR-CALNAME:Prayer times"));
     await page.click('#viewSeg [data-view="table"]');

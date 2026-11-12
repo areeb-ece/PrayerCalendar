@@ -1,6 +1,7 @@
 /* PRAYER/CALENDAR page: the settings column, the day's timeline, the timetable and the
    download. The times and the file come from js/core.js. */
 import * as C from "./core.js";
+import { timetablePdf } from "./pdf.js";
 import { CITIES, cityLabel } from "./cities.js";
 
 const $ = (id) => document.getElementById(id);
@@ -19,6 +20,8 @@ function load() {
   try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
   const s = C.mergeSettings(saved);
   if (!s.place.tz) s.place.tz = BROWSER_TZ;
+  // first visit: the paper size where the visitor is (Letter in the Americas that use it, A4 elsewhere)
+  if (!saved || !saved.pdf) s.pdf.paper = /-(US|CA|MX|PH|CL|CO|VE|GT|CR|PA|DO|PR)$/i.test(navigator.language || "") ? "letter" : "a4";
   if (!C.parseDate(s.range.start) || !C.parseDate(s.range.end) || s.range.end < C.todayAt(s.place.tz)) {
     const today = C.todayAt(s.place.tz);
     s.range = { start: today, end: C.addDays(today, 29) };
@@ -241,12 +244,13 @@ function render() {
   $("empty").hidden = hasPlace;
   $("sheet").hidden = !hasPlace;
   const ok = Object.keys(probs).length === 0;
-  if (!hasPlace || !ok) { $("btnDownload").disabled = true; last = null; notes(null); if (hasPlace) drawEmptySheet(probs); return; }
+  if (!hasPlace || !ok) { $("btnDownload").disabled = $("btnPdf").disabled = true; last = null; notes(null); if (hasPlace) drawEmptySheet(probs); return; }
 
   const w = C.windows(S);
   const list = C.events(S, w);
   last = { w, list };
   $("btnDownload").disabled = list.length === 0;
+  $("btnPdf").disabled = !w.days.length;
   if (!selected || selected < S.range.start || selected > S.range.end) {
     const today = C.todayAt(S.place.tz);
     selected = today >= S.range.start && today <= S.range.end ? today : S.range.start;
@@ -359,13 +363,10 @@ function drawDay() {
 
 // One row a day: when each prayer begins, rounded as the file rounds it.
 function drawTable() {
-  const safe = S.rounding === "safe";
-  const r = (t, how) => (isNaN(t) ? NaN : Math[safe ? how : "round"](t / 60000) * 60000);
-  const asrCols = S.asr === "both" ? [["asr1", "Asr (Mithl)"], ["asr2", "Asr (Mithlain)"]] : [[S.asr === "hanafi" ? "asr2" : "asr1", "Asr"]];
-  const cols = [["fajr", "Fajr", "ceil"], ["sunrise", "Sunrise", "floor"], ["dhuhr", "Dhuhr", "ceil"], ...asrCols.map((c) => [...c, "ceil"]), ["maghrib", "Maghrib", "ceil"], ["isha", "Isha", "ceil"]];
+  const cols = C.tableColumns(S);
   const showH = S.hijri && C.hijri(S.range.start);
   let marked = false;
-  let html = `<thead><tr><th scope="col">Date</th>${cols.map((c) => `<th scope="col" class="sd-num">${c[1]}</th>`).join("")}</tr></thead><tbody>`;
+  let html = `<thead><tr><th scope="col">Date</th>${cols.map((c) => `<th scope="col" class="sd-num">${c.label}</th>`).join("")}</tr></thead><tbody>`;
   let month = "";
   for (const t of last.w.days) {
     const m = t.date.slice(0, 7);
@@ -378,10 +379,10 @@ function drawTable() {
     const fri = C.weekday(t.date) === 5 ? " fri" : "";
     const sel = t.date === selected ? ' aria-selected="true"' : "";
     if (t.polar) { html += `<tr data-date="${t.date}"${sel}><td>${date}</td><td colspan="${cols.length}">No sunrise or sunset</td></tr>`; continue; }
-    html += `<tr class="${fri.trim()}" data-date="${t.date}"${sel}><td>${date}</td>` + cols.map(([k, , how]) => {
-      const mark = (k === "fajr" && t.adjusted.fajr) || (k === "isha" && t.adjusted.isha);
+    html += `<tr class="${fri.trim()}" data-date="${t.date}"${sel}><td>${date}</td>` + cols.map((c) => {
+      const mark = C.fromRule(t, c);
       if (mark) marked = true;
-      return `<td class="sd-num">${esc(clock(r(t[k], how)))}${mark ? '<span class="mark" aria-label="from the high-latitude rule">*</span>' : ""}</td>`;
+      return `<td class="sd-num">${esc(clock(C.columnTime(t, c, S)))}${mark ? '<span class="mark" aria-label="from the high-latitude rule">*</span>' : ""}</td>`;
     }).join("") + "</tr>";
   }
   $("times").innerHTML = html + "</tbody>";
@@ -394,16 +395,19 @@ function drawIcs() {
   $("viewIcs").textContent = C.makeIcs(S, last.list);
 }
 
-function fileName() {
+function fileName(ext) {
   const slug = (S.place.name || "prayer-times").toLowerCase().normalize("NFKD").replace(/[^\w]+/g, "-").replace(/^-+|-+$/g, "");
-  return `prayer-times-${slug}-${S.range.start}-to-${S.range.end}.ics`;
+  return `prayer-times-${slug}-${S.range.start}-to-${S.range.end}.${ext}`;
 }
 function download() {
   if (!last || !last.list.length) return;
-  const blob = new Blob([C.makeIcs(S, last.list)], { type: "text/calendar;charset=utf-8" });
+  saveFile(C.makeIcs(S, last.list), "text/calendar;charset=utf-8", "ics");
+}
+function saveFile(data, type, ext) {
+  const blob = new Blob([data], { type });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = fileName();
+  a.download = fileName(ext);
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -411,6 +415,15 @@ function download() {
   toast("Saved " + a.download);
 }
 
+// The PDF dialog: its choices are kept with the other settings.
+function openPdf() {
+  const extra = [["hijri", "Hijri date", "Umm al-Qura"], ...C.EXTRA_COLUMNS.map((x) => [x.key, x.label === "Sunset mk." ? "Sunset makrooh" : x.label, x.hint])]
+    .filter(([k]) => k !== "hijri" || C.hijri(S.range.start));
+  $("pdfCols").innerHTML = extra.map(([k, l, hint]) => `<label class="sd-check"><input type="checkbox" data-pdf-col="${k}"${(k === "hijri" ? S.pdf.hijri : S.pdf.extras[k]) ? " checked" : ""}><span>${esc(l)} <span class="sd-hint">· ${esc(hint)}</span></span></label>`).join("");
+  setSeg($("pdfPaper"), S.pdf.paper);
+  $("pdfMonthPages").checked = S.pdf.monthPages;
+  $("pdfDlg").showModal();
+}
 let toastTimer = 0;
 function toast(msg) {
   const t = $("toast");
@@ -504,6 +517,25 @@ function wire() {
     catch (e) { toast("Copying was blocked. Select the text and copy it instead."); }
   });
   $("btnDownload").addEventListener("click", download);
+  $("btnPdf").addEventListener("click", openPdf);
+  const dlg = $("pdfDlg");
+  dlg.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (e.target === dlg || (b && b.hasAttribute("data-close"))) return dlg.close();
+    if (b && b.closest("#pdfPaper")) { S.pdf.paper = b.dataset.v; setSeg($("pdfPaper"), S.pdf.paper); save(); }
+    else if (b && b.id === "pdfGo") {
+      if (!last) return;
+      saveFile(timetablePdf(S, last.w, S.pdf), "application/pdf", "pdf");
+      dlg.close();
+    }
+  });
+  dlg.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.id === "pdfMonthPages") S.pdf.monthPages = t.checked;
+    else if (t.dataset.pdfCol === "hijri") S.pdf.hijri = t.checked;
+    else if (t.dataset.pdfCol) S.pdf.extras[t.dataset.pdfCol] = t.checked;
+    save();
+  });
   $("privacyDlg").addEventListener("click", (e) => { if (e.target.closest("[data-close]") || e.target === $("privacyDlg")) $("privacyDlg").close(); });
 
   // Offline, without the shared settings panel: the page's own light/dark switch.
